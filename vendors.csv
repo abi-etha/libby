@@ -1,0 +1,17 @@
+vendor,keywords,end_keywords,logo_hash,default_pages
+ATT,"at&t;att wireless;mobility;wireless","total amount due;summary of charges;billing summary;page","",4
+CHASE,"chase;jp morgan;checking;savings;credit card","ending balance;deposits and credits;total fees;interest charged","",2
+AMEX,"american express;amex;blue cash;platinum","new balance;payment due;closing date;total fees","",2
+DISCOVER,"discover;discover card;discover bank","new balance;payment due;closing date;summary of charges","",2
+CITI,"citibank;citi card;citi","new balance;payment due;closing date;account summary","",2
+CAPONE,"capital one;cap one;capitalone","new balance;payment due;closing date;transactions summary","",2
+SPECTRUM,"spectrum;charter;internet;wifi","amount due;service period;billing summary;total due","",3
+COMED,"comed;electric service;electricity","total amount due;billing summary;service period","",2
+USAA,"usaa;usaa federal savings bank","ending balance;deposits;withdrawals;fees summary","",2
+WELLSFARGO,"wells fargo;wf bank;wells","ending balance;total deposits;total withdrawals;fees summary","",2
+BOA,"bank of america;boa;bankamerica","ending balance;total deposits;total withdrawals;fees summary","",2
+PAYPAL,"paypal;pp credit;paypal credit","new balance;payment due;closing date","",1
+AMAZON,"amazon;amazon card;amazon visa","new balance;payment due;closing date","",1
+UPS,"ups;united parcel service","tracking summary;billing summary;charges","",1
+FEDEX,"fedex;federal express","charges;billing summary;invoice total","",1
+MISC,"misc;unknown;general","page","",1

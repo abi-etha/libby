@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libby — Your Bookkeeping Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Lora:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sage:       #6B8F71;
+  --sage-lt:    #E8F0E9;
+  --sage-dark:  #4A6B50;
+  --brown:      #8B6F5E;
+  --brown-lt:   #F5EDE8;
+  --brown-dark: #5C3D2E;
+  --lavender:   #9B8BB4;
+  --lav-lt:     #F0ECF6;
+  --cream:      #FBF8F3;
+  --parchment:  #F2EAD8;
+  --ink:        #2C2018;
+  --text:       #3D2E22;
+  --text-mid:   #7A6055;
+  --text-lt:    #AFA098;
+  --gold:       #C8A84B;
+  --gold-lt:    #FBF5E0;
+  --alert:      #C05A3A;
+  --alert-lt:   #FAF0EC;
+  --white:      #FFFFFF;
+  --shadow:     0 4px 20px rgba(44,32,24,0.10);
+  --shadow-sm:  0 2px 8px rgba(44,32,24,0.07);
+  --radius:     16px;
+  --radius-sm:  10px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito','Segoe UI',sans-serif;background:var(--cream);color:var(--text);font-size:15px;line-height:1.65;min-height:100vh}
+h1,h2,h3{font-family:'Lora',Georgia,serif;font-weight:500;line-height:1.2}
+
+/* ── Page wrapper ─────────────────────────────────── */
+.app{max-width:820px;margin:0 auto;padding:32px 20px 60px}
+
+/* ── Header ───────────────────────────────────────── */
+.app-header{text-align:center;margin-bottom:40px}
+.brand{font-family:'Lora',Georgia,serif;font-size:15px;font-weight:500;color:var(--text-lt);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px}
+.subscription-badge{display:inline-block;background:var(--lav-lt);color:var(--lavender);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.05em;margin-bottom:16px}
+
+/* ── Libby stage ──────────────────────────────────── */
+.libby-stage{position:relative;display:flex;justify-content:center;align-items:flex-end;height:200px;margin-bottom:8px}
+.libby-svg-wrap{position:relative;cursor:default;user-select:none}
+.libby-svg-wrap:hover .libby-main{transform:translateY(-4px)}
+.libby-main{transition:transform 0.3s ease}
+.speech-bubble{position:absolute;top:-44px;left:50%;transform:translateX(-50%);background:white;border:2px solid var(--sage-lt);border-radius:12px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--sage-dark);white-space:nowrap;box-shadow:var(--shadow-sm)}
+.speech-bubble::after{content:'';position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:10px solid white}
+.speech-bubble::before{content:'';position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:11px solid var(--sage-lt)}
+.libby-headline{text-align:center;font-size:28px;font-family:'Lora',Georgia,serif;color:var(--ink);margin-bottom:6px;line-height:1.25}
+.libby-sub{text-align:center;font-size:15px;color:var(--text-mid);margin-bottom:32px;font-style:italic}
+
+/* ── Cards ────────────────────────────────────────── */
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:28px;margin-bottom:20px;border:1px solid rgba(107,143,113,0.08)}
+
+/* ── Upload zone ──────────────────────────────────── */
+.upload-zone{border:2.5px dashed #C5D8C7;border-radius:var(--radius);padding:44px 28px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--sage-lt);position:relative}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--sage-dark);background:#DFF0E1}
+.upload-zone.has-file{border-color:var(--sage);border-style:solid;background:#EBF4EC}
+.upload-icon{font-size:42px;margin-bottom:12px;display:block;transition:transform 0.2s}
+.upload-zone:hover .upload-icon{transform:translateY(-3px)}
+.upload-title{font-size:17px;font-weight:700;color:var(--sage-dark);margin-bottom:5px}
+.upload-sub{font-size:13px;color:var(--text-mid)}
+.upload-sub em{color:var(--sage-dark);font-style:normal;font-weight:600}
+#file-input{display:none}
+
+/* ── Client prefix input ──────────────────────────── */
+.prefix-row{display:flex;gap:14px;align-items:flex-end;margin-top:18px}
+.prefix-field{flex:1}
+.prefix-field label{display:block;font-size:12px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+.prefix-field input{width:100%;padding:10px 14px;border:1.5px solid var(--parchment);border-radius:var(--radius-sm);font-family:inherit;font-size:14px;color:var(--text);background:var(--cream);transition:border-color 0.15s}
+.prefix-field input:focus{outline:none;border-color:var(--sage)}
+.prefix-field input::placeholder{color:var(--text-lt)}
+
+/* ── Button ───────────────────────────────────────── */
+.btn{padding:12px 24px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;transition:all 0.15s;letter-spacing:0.02em}
+.btn-primary{background:var(--sage-dark);color:white}.btn-primary:hover{background:#3A5A40;transform:translateY(-1px);box-shadow:0 4px 12px rgba(74,107,80,0.3)}
+.btn-primary:disabled{background:var(--text-lt);cursor:not-allowed;transform:none;box-shadow:none}
+.btn-secondary{background:var(--sage-lt);color:var(--sage-dark)}.btn-secondary:hover{background:#D8EEDA}
+.btn-dl{background:var(--sage-dark);color:white;padding:10px 18px;font-size:13px}
+.btn-qb{background:var(--lavender);color:white;padding:10px 18px;font-size:13px}.btn-qb:hover{background:#8A78A3}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+
+/* ── Processing state ─────────────────────────────── */
+.processing-card{text-align:center;padding:40px 28px}
+.processing-libby{animation:bob 1.2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.progress-bar-wrap{background:var(--sage-lt);border-radius:100px;height:8px;margin:16px 0 8px;overflow:hidden}
+.progress-bar{height:100%;background:var(--sage);border-radius:100px;transition:width 0.4s ease}
+.processing-steps{list-style:none;margin-top:16px;text-align:left;display:inline-block}
+.processing-steps li{font-size:13px;color:var(--text-mid);padding:4px 0;display:flex;align-items:center;gap:8px}
+.processing-steps li.done{color:var(--sage-dark);font-weight:600}
+.processing-steps li.active{color:var(--brown-dark);font-weight:700}
+.step-icon{width:18px;text-align:center;flex-shrink:0}
+
+/* ── Results ──────────────────────────────────────── */
+.results-header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.results-celebrate{font-size:40px;animation:spin-once 0.6s ease}
+@keyframes spin-once{0%{transform:rotate(-15deg) scale(0.8)}60%{transform:rotate(5deg) scale(1.1)}100%{transform:rotate(0) scale(1)}}
+.results-summary{flex:1}
+.results-summary h2{font-size:20px;color:var(--ink);margin-bottom:3px}
+.results-summary p{font-size:13px;color:var(--text-mid)}
+.statement-list{list-style:none;margin-bottom:16px}
+.statement-item{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--sage-lt)}
+.statement-item:last-child{border-bottom:none}
+.stmt-icon{width:36px;height:36px;border-radius:8px;background:var(--sage-lt);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.stmt-info{flex:1}
+.stmt-name{font-size:13px;font-weight:700;color:var(--text);display:block;margin-bottom:2px;font-family:monospace;letter-spacing:-0.01em}
+.stmt-meta{font-size:12px;color:var(--text-lt)}
+.stmt-conf{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.conf-high{background:var(--sage-lt);color:var(--sage-dark)}
+.conf-mid{background:var(--gold-lt);color:#7A5C1E}
+.conf-low{background:var(--alert-lt);color:var(--alert)}
+.stmt-dl{font-size:12px;padding:5px 10px;border-radius:6px;background:var(--sage-lt);color:var(--sage-dark);font-weight:700;cursor:pointer;border:none;font-family:inherit;text-decoration:none;display:inline-block}
+.stmt-dl:hover{background:#D8EEDA}
+.stmt-dl-csv{font-size:12px;padding:5px 10px;border-radius:6px;background:var(--lav-lt);color:var(--lavender);font-weight:700;cursor:pointer;border:none;font-family:inherit;text-decoration:none;display:inline-block;margin-left:4px}
+.stmt-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
+
+
+
+/* ── Bookie helper ────────────────────────────────── */
+.bookie-tip{display:flex;align-items:flex-start;gap:14px;background:var(--lav-lt);border-radius:var(--radius-sm);padding:16px;margin-top:16px;border:1px solid rgba(155,139,180,0.2)}
+.bookie-wrap{flex-shrink:0;margin-top:2px}
+.bookie-tip-text{font-size:13px;color:var(--text-mid);line-height:1.6}
+.bookie-tip-text strong{color:var(--text)}
+
+/* ── Error ────────────────────────────────────────── */
+.error-card{background:var(--alert-lt);border:1px solid rgba(192,90,58,0.2);border-radius:var(--radius);padding:20px 24px;display:flex;gap:14px;align-items:flex-start}
+.error-icon{font-size:24px;flex-shrink:0}
+.error-text h3{font-size:15px;font-weight:700;color:var(--alert);margin-bottom:4px}
+.error-text p{font-size:13px;color:var(--text-mid)}
+
+/* ── API status pill ──────────────────────────────── */
+.api-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;margin-bottom:20px;justify-content:center}
+.api-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.api-dot.connected{background:var(--sage);animation:pulse 2s infinite}
+.api-dot.disconnected{background:var(--alert)}
+.api-dot.checking{background:var(--gold);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* ── States ───────────────────────────────────────── */
+.state{display:none}.state.active{display:block}
+
+/* ── Footer ───────────────────────────────────────── */
+.app-footer{text-align:center;margin-top:40px;font-size:12px;color:var(--text-lt)}
+.app-footer a{color:var(--sage-dark);text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div class="brand">LedgerPath</div>
+    <div class="subscription-badge">✦ Pro Subscriber</div>
+
+    <!-- Libby SVG illustration -->
+    <div class="libby-stage">
+      <div class="libby-svg-wrap" id="libby-wrap">
+        <div class="speech-bubble" id="libby-speech">Hello! Ready to tidy your books? 📚</div>
+        <!-- Libby the sparrow — hand-crafted from your sketch -->
+        <svg class="libby-main" id="libby-svg" width="160" height="190" viewBox="0 0 160 190" xmlns="http://www.w3.org/2000/svg">
+          <!-- Stack of books Libby stands on -->
+          <rect x="20" y="168" width="120" height="12" rx="3" fill="#8B6F5E"/>
+          <rect x="16" y="158" width="128" height="12" rx="3" fill="#A07850"/>
+          <rect x="22" y="148" width="116" height="12" rx="3" fill="#6B8F71"/>
+          <!-- Book spines -->
+          <line x1="20" y1="148" x2="20" y2="180" stroke="#5C3D2E" stroke-width="1.5" opacity="0.3"/>
+          <line x1="144" y1="148" x2="144" y2="180" stroke="#5C3D2E" stroke-width="1.5" opacity="0.3"/>
+          <text x="80" y="157" text-anchor="middle" font-size="7" font-family="Lora,serif" fill="#F2EAD8" opacity="0.8">LEDGER</text>
+
+          <!-- Body — round warm brown sparrow -->
+          <ellipse cx="80" cy="115" rx="38" ry="34" fill="#C4956A"/>
+          <!-- Chest lighter patch -->
+          <ellipse cx="80" cy="122" rx="24" ry="22" fill="#E8C99A"/>
+          <!-- Wing right -->
+          <path d="M112 108 C130 100 138 118 122 132 C115 128 108 120 112 108Z" fill="#A07850"/>
+          <path d="M112 108 C122 104 130 112 122 122" stroke="#8B6F5E" stroke-width="1" fill="none" opacity="0.5"/>
+          <!-- Wing left -->
+          <path d="M48 108 C30 100 22 118 38 132 C45 128 52 120 48 108Z" fill="#A07850"/>
+          <!-- Head -->
+          <circle cx="80" cy="80" r="30" fill="#C4956A"/>
+          <!-- Head darker cap -->
+          <ellipse cx="80" cy="64" rx="22" ry="14" fill="#8B6F5E"/>
+          <!-- Little tuft on top -->
+          <path d="M78 53 C76 45 80 40 84 48 C82 44 86 42 85 50" fill="#6B5040" stroke="#6B5040" stroke-width="1"/>
+          <!-- Rosy cheeks -->
+          <circle cx="63" cy="84" r="6" fill="#E8A090" opacity="0.5"/>
+          <circle cx="97" cy="84" r="6" fill="#E8A090" opacity="0.5"/>
+          <!-- Eyes — big round with glasses -->
+          <circle cx="68" cy="80" r="9" fill="white"/>
+          <circle cx="92" cy="80" r="9" fill="white"/>
+          <circle cx="68" cy="80" r="6" fill="#2C2018"/>
+          <circle cx="92" cy="80" r="6" fill="#2C2018"/>
+          <circle cx="70" cy="78" r="2" fill="white"/>
+          <circle cx="94" cy="78" r="2" fill="white"/>
+          <!-- Glasses frames — round tortoiseshell -->
+          <circle cx="68" cy="80" r="10" fill="none" stroke="#8B6F5E" stroke-width="2.5"/>
+          <circle cx="92" cy="80" r="10" fill="none" stroke="#8B6F5E" stroke-width="2.5"/>
+          <!-- Glasses bridge -->
+          <line x1="78" y1="80" x2="82" y2="80" stroke="#8B6F5E" stroke-width="2.5"/>
+          <!-- Glasses arms -->
+          <line x1="58" y1="78" x2="52" y2="76" stroke="#8B6F5E" stroke-width="2"/>
+          <line x1="102" y1="78" x2="108" y2="76" stroke="#8B6F5E" stroke-width="2"/>
+          <!-- Beak -->
+          <path d="M76 89 L80 96 L84 89 Z" fill="#D4A44C"/>
+          <!-- Sage green cardigan body -->
+          <path d="M50 130 C45 125 42 135 44 145 L116 145 C118 135 115 125 110 130 C103 138 57 138 50 130Z" fill="#6B8F71"/>
+          <!-- Cardigan lapels -->
+          <path d="M80 128 L68 138 L62 145 L80 145 Z" fill="#5A7A60"/>
+          <path d="M80 128 L92 138 L98 145 L80 145 Z" fill="#5A7A60"/>
+          <!-- Elbow patches -->
+          <ellipse cx="48" cy="134" rx="6" ry="4" fill="#4A6B50" opacity="0.7" transform="rotate(-20 48 134)"/>
+          <ellipse cx="112" cy="134" rx="6" ry="4" fill="#4A6B50" opacity="0.7" transform="rotate(20 112 134)"/>
+          <!-- Bow tie -->
+          <path d="M72 107 L80 111 L88 107 L80 103 Z" fill="#9B8BB4"/>
+          <circle cx="80" cy="107" r="2.5" fill="#7A6A94"/>
+          <!-- Tiny pencil in right wing/hand -->
+          <rect x="118" y="118" width="3" height="18" rx="1" fill="#F2EAD8" transform="rotate(20 118 118)"/>
+          <polygon points="118,136 121,136 119.5,141" fill="#D4A44C" transform="rotate(20 118 118)"/>
+          <rect x="118" y="118" width="3" height="4" rx="0.5" fill="#C65A3A" transform="rotate(20 118 118)"/>
+          <!-- Tiny notebook in left wing -->
+          <rect x="28" y="120" width="12" height="16" rx="2" fill="#F2EAD8" transform="rotate(-15 28 120)"/>
+          <rect x="29" y="121" width="10" height="14" rx="1" fill="white" transform="rotate(-15 28 120)"/>
+          <line x1="30" y1="124" x2="38" y2="123" stroke="#C5D8C7" stroke-width="1" transform="rotate(-15 28 120)"/>
+          <line x1="30" y1="127" x2="38" y2="126" stroke="#C5D8C7" stroke-width="1" transform="rotate(-15 28 120)"/>
+          <!-- Bookie peeking from pocket -->
+          <rect x="86" y="132" width="16" height="8" rx="3" fill="#6B8F71"/>
+          <!-- Bookie head poking out -->
+          <circle cx="94" cy="130" r="6" fill="#90C870"/>
+          <!-- Bookie eyes (tiny) -->
+          <circle cx="91.5" cy="129" r="1.5" fill="white"/>
+          <circle cx="96.5" cy="129" r="1.5" fill="white"/>
+          <circle cx="91.5" cy="129" r="0.8" fill="#2C2018"/>
+          <circle cx="96.5" cy="129" r="0.8" fill="#2C2018"/>
+          <!-- Bookie glasses (tiny) -->
+          <circle cx="91.5" cy="129" r="2" fill="none" stroke="#8B6F5E" stroke-width="0.8"/>
+          <circle cx="96.5" cy="129" r="2" fill="none" stroke="#8B6F5E" stroke-width="0.8"/>
+          <line x1="93.5" y1="129" x2="94.5" y2="129" stroke="#8B6F5E" stroke-width="0.8"/>
+          <!-- Bookie little antenna/feelers -->
+          <line x1="91" y1="124" x2="89" y2="121" stroke="#90C870" stroke-width="1"/>
+          <line x1="97" y1="124" x2="99" y2="121" stroke="#90C870" stroke-width="1"/>
+          <circle cx="89" cy="120" r="1.5" fill="#90C870"/>
+          <circle cx="99" cy="120" r="1.5" fill="#90C870"/>
+        </svg>
+      </div>
+    </div>
+
+    <h1 class="libby-headline">Hi, I'm Libby!</h1>
+    <p class="libby-sub">Your book-keeping assistant — sorts, names, and organises your statements in under a minute.</p>
+
+    <div class="api-status" id="api-status">
+      <div class="api-dot checking" id="api-dot"></div>
+      <span id="api-status-text">Checking connection to statement engine…</span>
+    </div>
+  </div>
+
+  <!-- ── UPLOAD STATE ──────────────────────────────── -->
+  <div class="state active" id="state-upload">
+    <div class="card">
+      <div class="upload-zone" id="upload-zone"
+           onclick="document.getElementById('file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <span class="upload-icon" id="upload-icon">📄</span>
+        <div class="upload-title" id="upload-title">Drop your scanned PDF here</div>
+        <div class="upload-sub" id="upload-sub">or click to browse · <em>Bank statements, utility bills, invoices</em></div>
+        <input type="file" id="file-input" accept=".pdf" onchange="handleFileSelect(event)">
+      </div>
+
+      <div class="prefix-row">
+        <div class="prefix-field">
+          <label>Client / folder prefix</label>
+          <input type="text" id="prefix-input" placeholder="e.g. SMITH_2025 or SALON_MONTROSE" value="">
+        </div>
+        <button class="btn btn-primary" id="process-btn" onclick="startProcessing()" disabled>
+          Let Libby work! ✨
+        </button>
+      </div>
+    </div>
+
+    <div class="bookie-tip">
+      <div class="bookie-wrap">
+        <!-- Bookie standalone -->
+        <svg width="40" height="44" viewBox="0 0 40 44" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="34" width="32" height="8" rx="3" fill="#6B8F71"/>
+          <rect x="8" y="28" width="24" height="8" rx="3" fill="#A07850"/>
+          <ellipse cx="20" cy="22" rx="14" ry="12" fill="#90C870"/>
+          <circle cx="15" cy="20" r="3" fill="white"/>
+          <circle cx="25" cy="20" r="3" fill="white"/>
+          <circle cx="15" cy="20" r="1.5" fill="#2C2018"/>
+          <circle cx="25" cy="20" r="1.5" fill="#2C2018"/>
+          <circle cx="15" cy="20" r="2.5" fill="none" stroke="#8B6F5E" stroke-width="1"/>
+          <circle cx="25" cy="20" r="2.5" fill="none" stroke="#8B6F5E" stroke-width="1"/>
+          <line x1="17.5" y1="20" x2="22.5" y2="20" stroke="#8B6F5E" stroke-width="1"/>
+          <line x1="13" y1="13" x2="11" y2="9" stroke="#90C870" stroke-width="1.5"/>
+          <line x1="27" y1="13" x2="29" y2="9" stroke="#90C870" stroke-width="1.5"/>
+          <circle cx="11" cy="8" r="2" fill="#90C870"/>
+          <circle cx="29" cy="8" r="2" fill="#90C870"/>
+          <path d="M16 26 Q20 29 24 26" fill="none" stroke="#5C8C4A" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="bookie-tip-text">
+        <strong>Bookie says:</strong> Make sure your PDF is a scan of actual paper statements — not a digital export. Libby reads scanned pages best when the resolution is 150 DPI or higher. Multiple statements in one PDF? No problem — Libby splits them automatically!
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROCESSING STATE ──────────────────────────── -->
+  <div class="state" id="state-processing">
+    <div class="card processing-card">
+      <div class="processing-libby">
+        <!-- Libby animated — working pose with clipboard -->
+        <svg width="120" height="140" viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="60" cy="108" rx="28" ry="24" fill="#C4956A"/>
+          <ellipse cx="60" cy="115" rx="18" ry="16" fill="#E8C99A"/>
+          <circle cx="60" cy="70" r="24" fill="#C4956A"/>
+          <ellipse cx="60" cy="56" rx="17" ry="11" fill="#8B6F5E"/>
+          <circle cx="51" cy="68" r="7" fill="white"/>
+          <circle cx="69" cy="68" r="7" fill="white"/>
+          <circle cx="51" cy="68" r="5" fill="#2C2018"/>
+          <circle cx="69" cy="68" r="5" fill="#2C2018"/>
+          <circle cx="52.5" cy="66.5" r="1.5" fill="white"/>
+          <circle cx="70.5" cy="66.5" r="1.5" fill="white"/>
+          <circle cx="51" cy="68" r="7.5" fill="none" stroke="#8B6F5E" stroke-width="2"/>
+          <circle cx="69" cy="68" r="7.5" fill="none" stroke="#8B6F5E" stroke-width="2"/>
+          <line x1="58.5" y1="68" x2="61.5" y2="68" stroke="#8B6F5E" stroke-width="2"/>
+          <line x1="43.5" y1="66" x2="39" y2="64" stroke="#8B6F5E" stroke-width="1.5"/>
+          <line x1="76.5" y1="66" x2="81" y2="64" stroke="#8B6F5E" stroke-width="1.5"/>
+          <path d="M56 75 L60 80 L64 75 Z" fill="#D4A44C"/>
+          <path d="M38 98 C32 92 30 104 34 112 L86 112 C90 104 88 92 82 98 C76 105 44 105 38 98Z" fill="#6B8F71"/>
+          <path d="M60 97 L52 106 L48 112 L60 112 Z" fill="#5A7A60"/>
+          <path d="M60 97 L68 106 L72 112 L60 112 Z" fill="#5A7A60"/>
+          <path d="M56 84 L60 86 L64 84 L60 82 Z" fill="#9B8BB4"/>
+          <!-- Clipboard held up -->
+          <rect x="70" y="85" width="22" height="28" rx="3" fill="#F2EAD8" transform="rotate(10 70 85)"/>
+          <rect x="72" y="87" width="18" height="24" rx="2" fill="white" transform="rotate(10 70 85)"/>
+          <rect x="77" y="83" width="8" height="5" rx="2" fill="#A07850" transform="rotate(10 70 85)"/>
+          <line x1="74" y1="93" x2="86" y2="91" stroke="#C5D8C7" stroke-width="1.5" transform="rotate(10 70 85)"/>
+          <line x1="74" y1="97" x2="86" y2="95" stroke="#C5D8C7" stroke-width="1.5" transform="rotate(10 70 85)"/>
+          <line x1="74" y1="101" x2="82" y2="99" stroke="#6B8F71" stroke-width="1.5" transform="rotate(10 70 85)"/>
+        </svg>
+      </div>
+      <h2 style="margin:16px 0 6px;font-size:20px;color:var(--ink)">Libby is working her magic…</h2>
+      <p style="font-size:13px;color:var(--text-mid);margin-bottom:16px" id="processing-msg">Scanning your PDF and sorting the pages…</p>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:5%"></div>
+      </div>
+      <p style="font-size:12px;color:var(--text-lt);margin-bottom:16px" id="progress-label">Loading…</p>
+      <ul class="processing-steps" id="processing-steps">
+        <li class="step active" id="step-load"><span class="step-icon">📄</span> Loading your PDF</li>
+        <li class="step" id="step-split"><span class="step-icon">✂️</span> Identifying statement boundaries</li>
+        <li class="step" id="step-vendor"><span class="step-icon">🔍</span> Recognising vendors</li>
+        <li class="step" id="step-name"><span class="step-icon">🏷️</span> Building file names</li>
+        <li class="step" id="step-conf"><span class="step-icon">📊</span> Computing confidence scores</li>
+        <li class="step" id="step-save"><span class="step-icon">💾</span> Saving organised files</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── RESULTS STATE ─────────────────────────────── -->
+  <div class="state" id="state-results">
+    <div class="card">
+      <div class="results-header">
+        <div class="results-celebrate" id="results-emoji">🎉</div>
+        <div class="results-summary">
+          <h2 id="results-title">All done! Your books are looking lovely.</h2>
+          <p id="results-sub">3 statements found and sorted.</p>
+        </div>
+        <!-- Bookie celebrating -->
+        <svg width="50" height="56" viewBox="0 0 50 56" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+          <ellipse cx="25" cy="30" rx="16" ry="14" fill="#90C870"/>
+          <circle cx="19" cy="27" r="3.5" fill="white"/>
+          <circle cx="31" cy="27" r="3.5" fill="white"/>
+          <circle cx="19" cy="27" r="2" fill="#2C2018"/>
+          <circle cx="31" cy="27" r="2" fill="#2C2018"/>
+          <circle cx="19" cy="27" r="3" fill="none" stroke="#8B6F5E" stroke-width="1"/>
+          <circle cx="31" cy="27" r="3" fill="none" stroke="#8B6F5E" stroke-width="1"/>
+          <line x1="22" y1="27" x2="28" y2="27" stroke="#8B6F5E" stroke-width="1"/>
+          <path d="M19 34 Q25 39 31 34" fill="none" stroke="#5C8C4A" stroke-width="2" stroke-linecap="round"/>
+          <!-- Tiny checkmark flag -->
+          <line x1="36" y1="14" x2="36" y2="28" stroke="#6B8F71" stroke-width="1.5"/>
+          <path d="M36 14 L44 17 L36 20 Z" fill="#6B8F71"/>
+          <path d="M38 17 L42 18" stroke="white" stroke-width="1" stroke-linecap="round"/>
+          <!-- Confetti bits -->
+          <circle cx="10" cy="12" r="2" fill="#9B8BB4" opacity="0.8"/>
+          <circle cx="42" cy="8" r="1.5" fill="#D4A44C" opacity="0.8"/>
+          <circle cx="8" cy="22" r="1.5" fill="#C65A3A" opacity="0.6"/>
+          <rect x="40" y="18" width="3" height="3" rx="0.5" fill="#6B8F71" opacity="0.7" transform="rotate(30 40 18)"/>
+        </svg>
+      </div>
+
+      <ul class="statement-list" id="statement-list">
+        <!-- filled by JS -->
+      </ul>
+
+      <div class="btn-row">
+        <button class="btn btn-primary btn-dl" id="download-all-btn" onclick="downloadAll()">⬇ Download all</button>
+        <button class="btn btn-qb" onclick="exportQB()">📤 Export to QuickBooks</button>
+        <button class="btn btn-secondary" onclick="resetApp()">Process another PDF</button>
+      </div>
+    </div>
+
+    <div class="bookie-tip" id="confidence-tip" style="display:none">
+      <div class="bookie-wrap">
+        <svg width="40" height="44" viewBox="0 0 40 44" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="28" rx="14" ry="12" fill="#90C870"/>
+          <circle cx="15" cy="25" r="3" fill="white"/><circle cx="25" cy="25" r="3" fill="white"/>
+          <circle cx="15" cy="25" r="1.5" fill="#2C2018"/><circle cx="25" cy="25" r="1.5" fill="#2C2018"/>
+          <circle cx="15" cy="25" r="2.5" fill="none" stroke="#8B6F5E" stroke-width="1"/>
+          <circle cx="25" cy="25" r="2.5" fill="none" stroke="#8B6F5E" stroke-width="1"/>
+          <line x1="17.5" y1="25" x2="22.5" y2="25" stroke="#8B6F5E" stroke-width="1"/>
+          <!-- concerned eyebrows -->
+          <line x1="13" y1="21" x2="17" y2="22.5" stroke="#5C8C4A" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="27" y1="21" x2="23" y2="22.5" stroke="#5C8C4A" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M15 32 Q20 30 25 32" fill="none" stroke="#5C8C4A" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="bookie-tip-text" id="confidence-tip-text">
+        <strong>Bookie notices:</strong> One or more statements have lower confidence scores. This usually means the scan quality was lower on those pages. You may want to double-check those files before importing to QuickBooks.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ERROR STATE ───────────────────────────────── -->
+  <div class="state" id="state-error">
+    <div class="error-card">
+      <span class="error-icon">😬</span>
+      <div class="error-text">
+        <h3 id="error-title">Oops, that one was tricky!</h3>
+        <p id="error-msg">Something went wrong while processing your PDF. Check the console for details, or try a different file.</p>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:center">
+      <button class="btn btn-secondary" onclick="resetApp()">Try again</button>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <p>Libby is powered by the <strong>Statement Engine</strong> · <a href="ledgerpath.html">LedgerPath</a> · Pro subscription</p>
+    <p style="margin-top:6px">API endpoint: <code id="api-endpoint-label" style="background:var(--parchment);padding:2px 8px;border-radius:4px;font-size:11px">http://localhost:5000</code></p>
+  </footer>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  LIBBY — FRONTEND ENGINE
+//  Connects to Flask API wrapper running locally
+// ════════════════════════════════════════════════════════
+
+const API = 'http://localhost:5000';
+let selectedFile = null;
+let processedResults = [];
+
+// ── Libby speech lines ────────────────────────────────
+const GREETINGS = [
+  "Hello! Ready to tidy your books? 📚",
+  "Drop me a PDF and I'll sort it out!",
+  "Scanning... don't worry, I've got this!",
+  "I love organising statements. Let's go!",
+];
+const PROCESSING_MSGS = [
+  "Scanning your PDF and sorting the pages…",
+  "I see a lot of numbers. Very exciting!",
+  "Ooh, interesting vendor patterns here…",
+  "Almost there — naming everything nicely…",
+];
+
+function randomLine(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+// ── API Status check ──────────────────────────────────
+async function checkAPI(){
+  const dot = document.getElementById('api-dot');
+  const txt = document.getElementById('api-status-text');
+  try {
+    const r = await fetch(API+'/health', {signal: AbortSignal.timeout(3000)});
+    if(r.ok){
+      dot.className='api-dot connected';
+      txt.textContent='Statement engine connected and ready';
+    } else {
+      throw new Error('non-200');
+    }
+  } catch(e){
+    dot.className='api-dot disconnected';
+    txt.innerHTML='Engine not running — <strong>start app.py first</strong> (see setup guide)';
+  }
+}
+
+// ── File handling ─────────────────────────────────────
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) setFile(file);
+}
+function handleFileSelect(e){
+  const file = e.target.files[0];
+  if(file) setFile(file);
+}
+function setFile(file){
+  if(!file.name.match(/\.pdf$/i)){
+    alert("Please upload a PDF file.");
+    return;
+  }
+  selectedFile = file;
+  document.getElementById('upload-icon').textContent = '✅';
+  document.getElementById('upload-title').textContent = file.name;
+  document.getElementById('upload-sub').textContent = (file.size/1024/1024).toFixed(2)+' MB · PDF ready';
+  document.getElementById('upload-zone').classList.add('has-file');
+  document.getElementById('process-btn').disabled = false;
+  setLibbySpeech("Great choice! Set your client prefix and I'll get started.");
+}
+
+function setLibbySpeech(text){
+  document.getElementById('libby-speech').textContent = text;
+}
+
+// ── Processing ────────────────────────────────────────
+async function startProcessing(){
+  if(!selectedFile) return;
+  const prefix = document.getElementById('prefix-input').value.trim() || 'CLIENT';
+
+  showState('processing');
+  setLibbySpeech("Scanning… don't worry, I've got this!");
+
+  // Animate steps
+  const steps = ['step-load','step-split','step-vendor','step-name','step-conf','step-save'];
+  const pcts  = [10, 28, 50, 68, 82, 95];
+  let stepIdx = 0;
+
+  const stepTimer = setInterval(() => {
+    if(stepIdx > 0) document.getElementById(steps[stepIdx-1]).className='step done';
+    if(stepIdx < steps.length){
+      document.getElementById(steps[stepIdx]).className='step active';
+      document.getElementById('progress-bar').style.width = pcts[stepIdx]+'%';
+      document.getElementById('progress-label').textContent = pcts[stepIdx]+'% complete';
+      document.getElementById('processing-msg').textContent = randomLine(PROCESSING_MSGS);
+      stepIdx++;
+    }
+  }, 800);
+
+  try {
+    const form = new FormData();
+    form.append('file', selectedFile);
+    form.append('prefix', prefix);
+
+    const resp = await fetch(API+'/process', {method:'POST', body:form});
+    clearInterval(stepTimer);
+
+    if(!resp.ok){
+      const err = await resp.json();
+      throw new Error(err.error || 'Server error '+resp.status);
+    }
+
+    const data = await resp.json();
+    processedResults = data.results;
+    showResults(data.results);
+
+  } catch(e){
+    clearInterval(stepTimer);
+    showError('Processing failed', e.message);
+    console.error(e);
+  }
+}
+
+// ── Results ───────────────────────────────────────────
+function showResults(results){
+  document.getElementById('progress-bar').style.width='100%';
+
+  const haslowConf = results.some(r => r.confidence < 0.5);
+  const list = document.getElementById('statement-list');
+
+  list.innerHTML = results.map((r, i) => {
+    const confPct = Math.round(r.confidence * 100);
+    const confClass = r.confidence >= 0.75 ? 'conf-high' : r.confidence >= 0.5 ? 'conf-mid' : 'conf-low';
+    const icon = r.vendor.includes('SAWS')||r.vendor.includes('WATER') ? '💧'
+               : r.vendor.includes('ATT')||r.vendor.includes('SPECTRUM') ? '📡'
+               : r.vendor.includes('CHASE')||r.vendor.includes('BANK') ? '🏦'
+               : r.vendor.includes('AMEX') ? '💳'
+               : '📄';
+    const csvFilename = r.filename.replace('.pdf', '.csv');
+    const txnLabel = r.transactions > 0 ? `${r.transactions} transaction${r.transactions>1?'s':''}` : 'no transactions';
+    return `<li class="statement-item">
+      <div class="stmt-icon">${icon}</div>
+      <div class="stmt-info">
+        <span class="stmt-name">${r.filename}</span>
+        <span class="stmt-meta">${r.vendor} · ${r.date} · ${r.pages} page${r.pages>1?'s':''} · ${txnLabel}</span>
+      </div>
+      <span class="stmt-conf ${confClass}">${confPct}%</span>
+      <div class="stmt-actions">
+        <a class="stmt-dl" href="${API}/download/${encodeURIComponent(r.filename)}" download="${r.filename}" title="Download PDF">PDF ↓</a>
+        ${r.transactions > 0 ? `<a class="stmt-dl-csv" href="${API}/download/${encodeURIComponent(csvFilename)}" download="${csvFilename}" title="Download CSV for QuickBooks">CSV ↓</a>` : ''}
+      </div>
+    </li>`;
+  }).join('');
+
+  const n = results.length;
+  document.getElementById('results-title').textContent =
+    n===1 ? "All done! Your books are looking lovely." :
+    `All done! ${n} statements sorted and named.`;
+  document.getElementById('results-sub').textContent =
+    `${n} statement${n>1?'s':''} found · ${haslowConf?'Some files have lower confidence — check the orange ones.':'All high confidence ✓'}`;
+
+  if(haslowConf) document.getElementById('confidence-tip').style.display='flex';
+
+  setLibbySpeech(n===1 ? "All done! Your books are looking lovely." : `${n} statements sorted! Everything's exported and ready.`);
+  showState('results');
+}
+
+function downloadAll(){
+  processedResults.forEach(r => {
+    const a = document.createElement('a');
+    a.href = API+'/download/'+encodeURIComponent(r.filename);
+    a.download = r.filename;
+    a.click();
+    if(r.transactions > 0){
+      const b = document.createElement('a');
+      const csvFilename = r.filename.replace('.pdf', '.csv');
+      b.href = API+'/download/'+encodeURIComponent(csvFilename);
+      b.download = csvFilename;
+      setTimeout(() => b.click(), 300);
+    }
+  });
+}
+
+function exportQB(){
+  // Phase 2: QuickBooks IIF export
+  alert("QuickBooks export is coming in Phase 2! For now, download your files and import manually via QuickBooks Online → Transactions → Import.");
+}
+
+// ── Error ─────────────────────────────────────────────
+function showError(title, msg){
+  document.getElementById('error-title').textContent = title;
+  document.getElementById('error-msg').textContent = msg;
+  setLibbySpeech("Oops, that one was tricky — but I figured out what went wrong!");
+  showState('error');
+}
+
+// ── State management ──────────────────────────────────
+function showState(name){
+  document.querySelectorAll('.state').forEach(s=>s.classList.remove('active'));
+  document.getElementById('state-'+name).classList.add('active');
+}
+function resetApp(){
+  selectedFile = null;
+  processedResults = [];
+  document.getElementById('file-input').value='';
+  document.getElementById('upload-icon').textContent='📄';
+  document.getElementById('upload-title').textContent='Drop your scanned PDF here';
+  document.getElementById('upload-sub').innerHTML='or click to browse · <em>Bank statements, utility bills, invoices</em>';
+  document.getElementById('upload-zone').classList.remove('has-file');
+  document.getElementById('process-btn').disabled=true;
+  document.getElementById('confidence-tip').style.display='none';
+  setLibbySpeech(randomLine(GREETINGS));
+  showState('upload');
+}
+
+// ── Init ──────────────────────────────────────────────
+setLibbySpeech(randomLine(GREETINGS));
+checkAPI();
+setInterval(checkAPI, 30000);
+</script>
+</body>
+</html>
