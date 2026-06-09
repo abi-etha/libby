@@ -213,20 +213,33 @@ def crop_logo_region(raw_bytes: bytes, box=(0, 0, 300, 150)):
 def detect_vendor_for_page(page: PageResult) -> Optional[str]:
     """
     Score-based vendor detection for a single page.
+    Weights header (first 500 chars) and footer (last 300 chars) 5x more
+    than body text, so institution names beat merchant names in transactions.
     Returns vendor name or None if no match.
     """
     if not page.text:
         return _detect_from_images(page)
 
-    text = page.text.lower()
+    text = page.text
+    n = len(text)
+
+    # Split into zones with different weights
+    header = text[:min(500, n)].lower()
+    footer = text[max(0, n - 300):].lower()
+    body   = text[min(500, n):max(0, n - 300)].lower()
+
     scores = {v: 0 for v in VENDORS if v not in ("UNKNOWN", "MISC")}
 
     for vendor, data in VENDORS.items():
         if vendor in ("UNKNOWN", "MISC"):
             continue
         for keyword in data["keywords"]:
-            if keyword in text:
-                scores[vendor] += 1
+            if keyword in header:
+                scores[vendor] += 5   # header hit — strong signal
+            if keyword in footer:
+                scores[vendor] += 5   # footer hit — strong signal
+            if keyword in body:
+                scores[vendor] += 1   # body hit — weak signal (could be a transaction)
 
     best = max(scores, key=scores.get)
     if scores[best] > 0:

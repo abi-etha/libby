@@ -42,10 +42,11 @@ def process_pdf(path: str, prefix: str):
 
     print(f"\nFOUND: {len(groups)} statement group(s)\n")
 
-    # 4. Build results
+    # 4. Build results — index resets per unique vendor+doctype+month combo
     results = []
+    index_counters = {}  # key -> count
 
-    for index, group in enumerate(groups, start=1):
+    for group in groups:
         vendor     = group.vendor or "MISC"
         doc_type   = group.doc_type or "other"
         year_month = group.year_month or "unknown"
@@ -58,6 +59,11 @@ def process_pdf(path: str, prefix: str):
         confidence = compute_statement_confidence(
             pages_list, vendor, end_keywords, used_fallback=False
         )
+
+        # Per-group counter — resets for each unique statement key
+        group_key = f"{vendor}|{doc_type}|{year_month}"
+        index_counters[group_key] = index_counters.get(group_key, 0) + 1
+        index = index_counters[group_key]
 
         filename     = build_filename(prefix, vendor, doc_type, year_month, index, confidence)
         csv_filename = build_csv_filename(filename)
