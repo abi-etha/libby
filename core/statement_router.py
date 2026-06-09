@@ -15,7 +15,7 @@ from core.config import LOG_FOLDER
 JSON_LOG = JSONLogger(LOG_FOLDER / "events.jsonl")
 
 
-def process_pdf(path: str, prefix: str):
+def process_pdf(path: str, prefix: str, request_id: str = None):
     """
     Full pipeline:
       1. Load pages from PDF
@@ -83,6 +83,7 @@ def process_pdf(path: str, prefix: str):
             index=index,
             confidence=confidence,
             used_fallback=False,
+            request_id=request_id,
         )
 
         results.append({

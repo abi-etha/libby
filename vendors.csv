@@ -1,17 +1,26 @@
-vendor,keywords,end_keywords,logo_hash,default_pages
-ATT,"at&t;att wireless;mobility;wireless","total amount due;summary of charges;billing summary;page","",4
-CHASE,"chase;jp morgan;checking;savings;credit card","ending balance;deposits and credits;total fees;interest charged","",2
-AMEX,"american express;amex;blue cash;platinum","new balance;payment due;closing date;total fees","",2
-DISCOVER,"discover;discover card;discover bank","new balance;payment due;closing date;summary of charges","",2
-CITI,"citibank;citi card;citi","new balance;payment due;closing date;account summary","",2
-CAPONE,"capital one;cap one;capitalone","new balance;payment due;closing date;transactions summary","",2
-SPECTRUM,"spectrum;charter;internet;wifi","amount due;service period;billing summary;total due","",3
-COMED,"comed;electric service;electricity","total amount due;billing summary;service period","",2
-USAA,"usaa;usaa federal savings bank","ending balance;deposits;withdrawals;fees summary","",2
-WELLSFARGO,"wells fargo;wf bank;wells","ending balance;total deposits;total withdrawals;fees summary","",2
-BOA,"bank of america;boa;bankamerica","ending balance;total deposits;total withdrawals;fees summary","",2
-PAYPAL,"paypal;pp credit;paypal credit","new balance;payment due;closing date","",1
-AMAZON,"amazon;amazon card;amazon visa","new balance;payment due;closing date","",1
-UPS,"ups;united parcel service","tracking summary;billing summary;charges","",1
-FEDEX,"fedex;federal express","charges;billing summary;invoice total","",1
-MISC,"misc;unknown;general","page","",1
+vendor,keywords,start_keywords,end_keywords,structural_chunk
+BOA,"bank of america;bankofamerica;boa;merrill lynch","","ending balance;total deposits;total withdrawals",2
+CHASE,"chase.com;jp morgan;jpmorgan;chase bank;chase credit card;chase sapphire;chase freedom","","ending balance;deposits and credits",2
+WELLS,"wells fargo;wellsfargo;wf bank","","ending balance;total deposits;total withdrawals",2
+USAA,"usaa;usaa federal savings bank;usaa.com","","ending balance;deposits;withdrawals",5
+UFCU,"ufcu;u f c u;u.f.c.u;university federal credit union;po box 9350;austin texas 78766","","ytd tax summary;year-to-date information for tax purposes;ncua",5
+FIRSTNATIONAL,"first national bank;firstnationaltx;firstnationaltx.com;fnb;member fdic;equal housing lender;1-800-555-0199","opening balance","closing balance;total credits;total debits",2
+CITI,"citibank;citi card;citi.com;citicards","","new balance;payment due;closing date",2
+CAPONE,"capital one;capitalone.com;cap one","","new balance;payment due;closing date",2
+AMEX,"american express;americanexpress;amex;americanexpress.com;p.o. box 650448;blue cash;membership rewards","closing date","interest charge calculation;days in billing period",4
+BARCLAYS,"barclays;aviator mastercard;aadvantage aviator;barclaycard;barclays.com;po box 60517","","interest charge calculation;days in billing period;miles details",3
+DISCOVER,"discover;discover card;discover bank;discover.com","","new balance;payment due;closing date",2
+PAYPAL,"paypal;pp credit;paypal credit;paypal.com","","new balance;payment due;closing date",1
+AMAZON,"amazon card;amazon visa","","new balance;payment due;closing date",1
+ATT,"at&t;att.com;att wireless;at&t mobility","","total amount due;summary of charges",4
+SPECTRUM,"spectrum;charter communications;spectrum.net","","amount due;service period",1
+SAWS,"san antonio water system;saws.org;saws","","mailing address change;choose a bill payment;customer service locations",2
+CPS,"cps energy;cpsenergy.com;city public service","","amount due;total due;billing summary",2
+COMED,"comed;electric service;commonwealth edison","","total amount due;billing summary",2
+VERIZON,"verizon;verizon wireless;vzw;verizon.com","","total amount due;account summary",3
+TMOBILE,"t-mobile;tmobile;t mobile;t-mobile.com","","total amount due;account summary",2
+TIGER,"tiger sanitation;tiger disposal","","amount due;taxes;invoice#:",2
+UPS,"ups;united parcel service;ups.com","","tracking summary;billing summary;charges",1
+FEDEX,"fedex;federal express;fedex.com","","charges;billing summary;invoice total",1
+GMAIL,"gmail;craigtx.com","","gmail.com",1
+MISC,"","","",1
