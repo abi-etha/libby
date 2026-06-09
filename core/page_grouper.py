@@ -227,52 +227,66 @@ def group_pages(pages: List[PageResult]) -> List[PageGroup]:
 def _propagate_metadata(page_meta: List[Dict]) -> List[Dict]:
     """
     Fill in missing vendor/doc_type/year_month from neighboring pages.
-    Strategy: forward-fill, then backward-fill.
+
+    Key rule: a page with NO DATE is almost always a continuation of the
+    previous page (e.g. a summary/footer page). Forward-fill is the primary
+    strategy. Backward-fill only handles the edge case where the first page(s)
+    have no metadata.
+
+    Vendor and doc_type are always forward-filled since they rarely change
+    within a single PDF.
     """
     n = len(page_meta)
 
-    # Forward fill
-    last_vendor    = None
-    last_doc_type  = None
+    # ── Pass 1: Forward fill everything ───────────────────────────────────
+    last_vendor     = None
+    last_doc_type   = None
     last_year_month = None
 
     for i in range(n):
         m = page_meta[i]
+
+        # Vendor: always forward-fill — institution name rarely appears on
+        # continuation pages, but transaction lines do (and score low now)
         if m["vendor"]:
             last_vendor = m["vendor"]
-        elif last_vendor:
+        if not m["vendor"] and last_vendor:
             m["vendor"] = last_vendor
 
+        # Doc type: forward-fill, ignore "other" as a signal
         if m["doc_type"] and m["doc_type"] != "other":
             last_doc_type = m["doc_type"]
-        elif last_doc_type and m["doc_type"] == "other":
+        if (not m["doc_type"] or m["doc_type"] == "other") and last_doc_type:
             m["doc_type"] = last_doc_type
 
+        # Year-month: forward-fill — summary/footer pages have no date header
+        # so they should inherit the month from the page before them
         if m["year_month"]:
             last_year_month = m["year_month"]
-        elif last_year_month:
+        if not m["year_month"] and last_year_month:
             m["year_month"] = last_year_month
 
-    # Backward fill for any still-missing at the start
+    # ── Pass 2: Backward fill for pages before first identified page ──────
     last_vendor     = None
     last_doc_type   = None
     last_year_month = None
 
     for i in range(n - 1, -1, -1):
         m = page_meta[i]
+
         if m["vendor"]:
             last_vendor = m["vendor"]
-        elif last_vendor:
+        if not m["vendor"] and last_vendor:
             m["vendor"] = last_vendor
 
         if m["doc_type"] and m["doc_type"] != "other":
             last_doc_type = m["doc_type"]
-        elif last_doc_type and m["doc_type"] == "other":
+        if (not m["doc_type"] or m["doc_type"] == "other") and last_doc_type:
             m["doc_type"] = last_doc_type
 
         if m["year_month"]:
             last_year_month = m["year_month"]
-        elif last_year_month:
+        if not m["year_month"] and last_year_month:
             m["year_month"] = last_year_month
 
     return page_meta

@@ -48,7 +48,15 @@ VENDORS = {
         "logo_hashes": [],
     },
     "FIRSTNATIONAL": {
-        "keywords": ["first national bank", "firstnationaltx", "fnb"],
+        "keywords": [
+            "first national bank",
+            "firstnationaltx",
+            "firstnationaltx.com",
+            "fnb",
+            "member fdic",
+            "equal housing lender",
+            "1-800-555-0199",
+        ],
         "start_keywords": ["opening balance"],
         "end_keywords": ["closing balance", "total credits", "total debits"],
         "structural_chunk": 2,
