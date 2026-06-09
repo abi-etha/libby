@@ -1,11 +1,12 @@
 # core/statement_router.py
+#
+# Main pipeline orchestrator — updated to use new page grouper.
 
 from core.pdf_loader import load_pdf
-from core.semantic_splitter import semantic_split
-from core.structural_fallback import structural_split
-from core.naming_engine import extract_date, build_filename
+from core.page_grouper import group_pages
+from core.page_classifier import needs_csv, majority_doc_type
+from core.naming_engine import build_filename, build_csv_filename
 from core.confidence import compute_statement_confidence
-from core.consolidator import consolidate_statements
 from core.transaction_extractor import extract_transactions, transactions_to_csv
 from core.vendor_fingerprint import VENDORS
 from core.json_logger import JSONLogger
@@ -17,12 +18,11 @@ JSON_LOG = JSONLogger(LOG_FOLDER / "events.jsonl")
 def process_pdf(path: str, prefix: str):
     """
     Full pipeline:
-      1. Load pages
-      2. Detect vendor + split into statement fragments
-      3. Extract date from each fragment
-      4. Consolidate fragments by date, sort pages by printed page number
-      5. Extract transactions → CSV
-      6. Build filenames, score confidence, return results
+      1. Load pages from PDF
+      2. Classify each page (doc type + vendor + date)
+      3. Group pages into logical statements
+      4. Extract transactions for bank/credit statements
+      5. Build filenames, score confidence, return results
     """
 
     # 1. Load
@@ -33,57 +33,50 @@ def process_pdf(path: str, prefix: str):
 
     print(f"\nLOADED: {len(pages)} pages from {path}\n")
 
-    # 2. Split
-    try:
-        vendor, statements = semantic_split(pages)
-        used_fallback = False
-    except Exception as e:
-        print("Semantic split failed:", e)
-        vendor = "UNKNOWN"
-        statements = structural_split(pages, vendor=vendor)
-        used_fallback = True
+    # 2 & 3. Classify + group
+    groups = group_pages(pages)
 
-    print(f"SPLIT: {len(statements)} fragment(s) for vendor={vendor}")
+    if not groups:
+        print("ERROR: No statement groups found")
+        return []
 
-    # 3. Extract date from each fragment
-    dates = {}
-    for index, statement_pages in statements:
-        date = "unknown"
-        for page in statement_pages:
-            date = extract_date(page.text or "", vendor)
-            if date != "unknown":
-                break
-        dates[index] = date
-        print(f"  Fragment {index}: {len(statement_pages)} pages, date={date}")
+    print(f"\nFOUND: {len(groups)} statement group(s)\n")
 
-    # 4. Consolidate
-    consolidated = consolidate_statements(statements, vendor, dates)
-    print(f"CONSOLIDATED: {len(consolidated)} final statement(s)")
-
-    # 5. Build results
+    # 4. Build results
     results = []
-    end_keywords = VENDORS[vendor]["end_keywords"]
 
-    for final_index, (date, statement_pages) in enumerate(consolidated, start=1):
-        filename     = build_filename(prefix, vendor, date, final_index)
-        csv_filename = filename.replace(".pdf", ".csv")
+    for index, group in enumerate(groups, start=1):
+        vendor     = group.vendor or "MISC"
+        doc_type   = group.doc_type or "other"
+        year_month = group.year_month or "unknown"
+        pages_list = group.pages
+
+        # Get end_keywords for confidence scoring
+        vendor_data  = VENDORS.get(vendor, VENDORS["MISC"])
+        end_keywords = vendor_data.get("end_keywords", [])
 
         confidence = compute_statement_confidence(
-            statement_pages, vendor, end_keywords, used_fallback
+            pages_list, vendor, end_keywords, used_fallback=False
         )
 
-        # Extract transactions
-        transactions = extract_transactions(statement_pages, vendor, date)
-        csv_content  = transactions_to_csv(transactions, vendor)
+        filename     = build_filename(prefix, vendor, doc_type, year_month, index, confidence)
+        csv_filename = build_csv_filename(filename)
+
+        # Extract transactions only for bank/credit statements
+        transactions = []
+        csv_content  = ""
+        if needs_csv(doc_type):
+            transactions = extract_transactions(pages_list, vendor, year_month)
+            csv_content  = transactions_to_csv(transactions, vendor)
 
         JSON_LOG.log_statement_result(
             pdf_path=path,
             filename=filename,
             vendor=vendor,
-            date=date,
-            index=final_index,
+            date=year_month,
+            index=index,
             confidence=confidence,
-            used_fallback=used_fallback,
+            used_fallback=False,
         )
 
         results.append({
@@ -91,14 +84,15 @@ def process_pdf(path: str, prefix: str):
             "csv_filename":  csv_filename,
             "csv_content":   csv_content,
             "vendor":        vendor,
-            "date":          date,
-            "index":         final_index,
+            "doc_type":      doc_type,
+            "date":          year_month,
+            "index":         index,
             "confidence":    confidence,
-            "used_fallback": used_fallback,
-            "pages":         statement_pages,
+            "used_fallback": False,
+            "pages":         pages_list,
             "transactions":  len(transactions),
         })
 
-        print(f"  → {filename} ({len(statement_pages)} pages, {len(transactions)} transactions, confidence={confidence})")
+        print(f"  → {filename} ({len(pages_list)} pages, {len(transactions)} transactions, confidence={confidence:.2f})")
 
     return results

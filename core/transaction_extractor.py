@@ -1,13 +1,7 @@
 # core/transaction_extractor.py
 #
-# Extracts transactions from statement pages and returns
-# rows formatted for QuickBooks CSV import.
-#
-# Handles:
-#   - Standard single-line transactions
-#   - Multi-line transactions (airlines, hotels, etc.)
-#   - Payments and credits (negative amounts)
-#   - Fees
+# Extracts transactions from bank and credit card statement pages.
+# Handles multiple real-world statement formats.
 
 import re
 import csv
@@ -16,14 +10,24 @@ from typing import List, Dict, Optional
 from core.image_extractor import PageResult
 
 
-# ── Date pattern for transaction lines ────────────────────────────────────
-# Matches: 01/15/20  or  01/15/2020
+# ── Amount patterns ────────────────────────────────────────────────────────
+
+# Matches: $1,234.56  or  -$1,234.56  or  1,234.56  or  (1,234.56)
+AMOUNT_PATTERN = re.compile(r"\(?\$?([\d,]+\.\d{2})\)?")
+
+# Amount at end of line
+AMOUNT_EOL = re.compile(r"-?\$?([\d,]+\.\d{2})\s*$")
+
+# Full line with: DATE DESCRIPTION AMOUNT [BALANCE]
+# e.g. "01/15/2025   HEB Grocery #0482   57.65   4,742.35"
+TABLE_ROW = re.compile(
+    r"^(\d{1,2}/\d{1,2}/\d{2,4})\s+(.+?)\s+([\d,]+\.\d{2})\s*(?:([\d,]+\.\d{2}))?\s*$"
+)
+
+# Date at start of line
 TXN_DATE = re.compile(r"^(\d{1,2}/\d{1,2}/\d{2,4})\*?")
 
-# Amount at end of line: $1,234.56  or  -$1,234.56  or  1,234.56
-TXN_AMOUNT = re.compile(r"-?\$?([\d,]+\.\d{2})\s*$")
-
-# Lines to skip — not transactions
+# Lines to always skip
 SKIP_PATTERNS = [
     re.compile(p, re.IGNORECASE) for p in [
         r"^payments?\s+amount",
@@ -34,10 +38,11 @@ SKIP_PATTERNS = [
         r"^detail",
         r"^\*indicates",
         r"^card ending",
-        r"^continued on reverse",
+        r"^continued on",
         r"^closing date",
         r"^payment due",
         r"^previous balance",
+        r"^opening balance",
         r"^payments?/credits?",
         r"^new balance",
         r"^days in billing",
@@ -47,26 +52,19 @@ SKIP_PATTERNS = [
         r"^\(v\) variable",
         r"^transactions? dated",
         r"^from\s+to\s+",
-        r"^2020 fees",
-        r"^2019 fees",
         r"^total fees",
         r"^total interest",
         r"^membership rewards",
         r"^foreign\s+spend",
+        r"^date\s+description",  # table header
+        r"^date\s+transaction",  # table header
         r"^\s*$",
     ]
 ]
 
-# Known section headers that signal we're in transaction territory
-SECTION_HEADERS = [
-    "payments and credits",
-    "new charges",
-    "fees",
-]
-
 
 def normalize_date(raw: str) -> str:
-    """Convert MM/DD/YY or MM/DD/YYYY to YYYY-MM-DD for QuickBooks."""
+    """Convert MM/DD/YY or MM/DD/YYYY to YYYY-MM-DD."""
     parts = raw.replace("*", "").strip().split("/")
     if len(parts) != 3:
         return raw
@@ -77,8 +75,10 @@ def normalize_date(raw: str) -> str:
 
 
 def clean_merchant(raw: str) -> str:
-    """Clean up merchant name — remove extra codes and numbers."""
-    # Remove trailing phone numbers like 210-342-8728
+    """Clean up merchant name."""
+    # Remove running balance suffix like "| $4,742.35"
+    raw = re.sub(r"\s*\|\s*\$?[\d,]+\.\d{2}\s*$", "", raw)
+    # Remove trailing phone numbers
     raw = re.sub(r"\s+\d{3}-\d{3}-\d{4}\s*$", "", raw)
     # Remove long numeric codes at end
     raw = re.sub(r"\s+\d{9,}\s*$", "", raw)
@@ -98,87 +98,138 @@ def should_skip(line: str) -> bool:
 def extract_transactions_from_text(text: str, vendor: str, statement_date: str) -> List[Dict]:
     """
     Parse raw text from a statement page into transaction rows.
-    Returns list of dicts ready for CSV output.
+    Tries table format first, falls back to line-by-line parsing.
     """
     transactions = []
-    lines = text.split("\n")
+    lines = [l for l in text.split("\n") if l.strip()]
 
-    current_txn = None
-    in_transaction_section = False
+    # ── Try table row format first ─────────────────────────────────────────
+    # Format: DATE  DESCRIPTION  AMOUNT  [BALANCE]
+    table_hits = 0
+    for line in lines:
+        m = TABLE_ROW.match(line.strip())
+        if m:
+            table_hits += 1
 
-    for i, line in enumerate(lines):
+    if table_hits >= 3:
+        # This looks like a table-format statement
+        transactions = _parse_table_format(lines, vendor, statement_date)
+        if transactions:
+            return transactions
+
+    # ── Fall back to line-by-line parsing ─────────────────────────────────
+    return _parse_line_format(lines, vendor, statement_date)
+
+
+def _parse_table_format(lines: List[str], vendor: str, statement_date: str) -> List[Dict]:
+    """Parse statements where each transaction is a single table row."""
+    transactions = []
+
+    for line in lines:
         stripped = line.strip()
-        if not stripped:
+        if not stripped or should_skip(stripped):
             continue
 
-        # Detect section headers
-        lower = stripped.lower()
-        if any(h in lower for h in SECTION_HEADERS):
-            in_transaction_section = True
+        m = TABLE_ROW.match(stripped)
+        if not m:
+            continue
+
+        date_raw    = m.group(1)
+        description = m.group(2).strip()
+        amount_str  = m.group(3).replace(",", "")
+
+        # Clean up description — remove any balance info
+        description = clean_merchant(description)
+        if not description:
+            continue
+
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            continue
+
+        is_payment = "payment" in description.lower() or "credit" in description.lower()
+
+        transactions.append({
+            "date":           normalize_date(date_raw),
+            "merchant":       description,
+            "amount":         amount,
+            "is_payment":     is_payment,
+            "memo_lines":     [],
+            "statement_date": statement_date,
+            "vendor":         vendor,
+        })
+
+    return transactions
+
+
+def _parse_line_format(lines: List[str], vendor: str, statement_date: str) -> List[Dict]:
+    """Parse statements where transactions may span multiple lines."""
+    transactions = []
+    current_txn = None
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
             continue
 
         if should_skip(stripped):
             continue
 
-        # Check if line starts with a date — new transaction
-        date_match = TXN_DATE.match(stripped)
-        amount_match = TXN_AMOUNT.search(stripped)
+        date_match   = TXN_DATE.match(stripped)
+        amount_match = AMOUNT_EOL.search(stripped)
 
         if date_match:
-            # Save previous transaction if we have one
             if current_txn:
                 transactions.append(current_txn)
 
-            date_raw = date_match.group(1)
+            date_raw  = date_match.group(1)
             remainder = stripped[len(date_raw):].strip().lstrip("*").strip()
 
-            # Extract amount if on same line
             amount = None
             merchant_raw = remainder
-            if amount_match:
-                amount_str = amount_match.group(1).replace(",", "")
-                amount = float(amount_str)
-                merchant_raw = TXN_AMOUNT.sub("", remainder).strip()
 
-            # Check if this is a payment (negative)
-            is_payment = "-" in stripped[:stripped.index(date_raw) + len(date_raw) + 5] or \
-                         "payment" in merchant_raw.lower() or \
-                         "credit" in merchant_raw.lower()
+            if amount_match:
+                amount_str   = amount_match.group(1).replace(",", "")
+                amount       = float(amount_str)
+                merchant_raw = AMOUNT_EOL.sub("", remainder).strip()
+
+            merchant_raw = clean_merchant(merchant_raw)
+
+            is_payment = (
+                "payment" in merchant_raw.lower() or
+                "credit" in merchant_raw.lower()
+            )
 
             current_txn = {
-                "date":          normalize_date(date_raw),
-                "merchant":      clean_merchant(merchant_raw),
-                "amount":        amount,
-                "is_payment":    is_payment,
-                "memo_lines":    [],
+                "date":           normalize_date(date_raw),
+                "merchant":       merchant_raw,
+                "amount":         amount,
+                "is_payment":     is_payment,
+                "memo_lines":     [],
                 "statement_date": statement_date,
-                "vendor":        vendor,
+                "vendor":         vendor,
             }
 
         elif current_txn is not None:
-            # Continuation line — could be merchant detail or amount
             if amount_match and current_txn["amount"] is None:
                 amount_str = amount_match.group(1).replace(",", "")
                 current_txn["amount"] = float(amount_str)
-                # If merchant is still empty, this line before amount is it
-                detail = TXN_AMOUNT.sub("", stripped).strip()
+                detail = AMOUNT_EOL.sub("", stripped).strip()
+                detail = clean_merchant(detail)
                 if detail and not should_skip(detail):
                     if not current_txn["merchant"]:
-                        current_txn["merchant"] = clean_merchant(detail)
+                        current_txn["merchant"] = detail
                     else:
                         current_txn["memo_lines"].append(detail)
             elif not should_skip(stripped):
-                # Extra detail lines — keep as memo
                 current_txn["memo_lines"].append(stripped)
 
-    # Don't forget the last transaction
     if current_txn:
         transactions.append(current_txn)
 
-    # Filter out anything without a real amount
-    transactions = [t for t in transactions if t["amount"] is not None]
-
-    return transactions
+    # Filter out anything without an amount
+    return [t for t in transactions if t["amount"] is not None]
 
 
 def extract_transactions(pages: List[PageResult], vendor: str, statement_date: str) -> List[Dict]:
@@ -193,7 +244,7 @@ def extract_transactions(pages: List[PageResult], vendor: str, statement_date: s
     seen = set()
     unique = []
     for t in all_transactions:
-        key = (t["date"], t["merchant"][:30], t["amount"])
+        key = (t["date"], t["merchant"][:40], round(t["amount"], 2))
         if key not in seen:
             seen.add(key)
             unique.append(t)
@@ -205,26 +256,21 @@ def extract_transactions(pages: List[PageResult], vendor: str, statement_date: s
 def transactions_to_csv(transactions: List[Dict], vendor: str) -> str:
     """
     Convert transaction list to QuickBooks-compatible CSV string.
-
-    QuickBooks Online import format:
-    Date, Description, Amount, Memo, Account
+    Format: Date, Description, Amount, Memo, Account
     """
     output = io.StringIO()
     writer = csv.writer(output)
-
-    # QuickBooks compatible header
     writer.writerow(["Date", "Description", "Amount", "Memo", "Account"])
 
     for t in transactions:
         amount = t["amount"]
-        # Payments are negative (money coming in), charges are positive
         if t.get("is_payment"):
             amount = -abs(amount)
         else:
             amount = abs(amount)
 
-        memo = " | ".join(t["memo_lines"]) if t["memo_lines"] else ""
-        merchant = t["merchant"] or "UNKNOWN MERCHANT"
+        memo     = " | ".join(t["memo_lines"]) if t["memo_lines"] else ""
+        merchant = t["merchant"] or "UNKNOWN"
 
         writer.writerow([
             t["date"],
