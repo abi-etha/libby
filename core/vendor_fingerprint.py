@@ -1,3 +1,4 @@
+import re
 # core/vendor_fingerprint.py
 #
 # Vendor detection — expanded list, per-page scoring.
@@ -231,10 +232,15 @@ def detect_vendor_for_page(page: PageResult) -> Optional[str]:
     text = page.text
     n = len(text)
 
+    # Find where the transaction table starts (first MM/DD/YYYY date)
+    # Use that as the real header boundary instead of a fixed 500 chars
+    date_match = re.search(r'\d{1,2}/\d{1,2}/\d{4}', text)
+    header_end = date_match.start() if date_match else min(500, n)
+
     # Split into zones with different weights
-    header = text[:min(500, n)].lower()
+    header = text[:header_end].lower()
     footer = text[max(0, n - 300):].lower()
-    body   = text[min(500, n):max(0, n - 300)].lower()
+    body   = text[header_end:max(0, n - 300)].lower()
 
     scores = {v: 0 for v in VENDORS if v not in ("UNKNOWN", "MISC")}
 
