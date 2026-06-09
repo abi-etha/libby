@@ -9,7 +9,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from functools import wraps
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
 # ── Path setup ────────────────────────────────────────────────
@@ -45,7 +45,7 @@ def require_api_key(f):
 
 @app.route("/")
 def index():
-    return render_template("libby.html")
+    return jsonify({"status": "ok", "message": "Libby Statement Engine — API only. Frontend lives at solfound.netlify.app"})
 
 
 @app.route("/health")
