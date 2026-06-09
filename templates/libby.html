@@ -442,7 +442,7 @@ h1,h2,h3{font-family:'Lora',Georgia,serif;font-weight:500;line-height:1.2}
 
   <footer class="app-footer">
     <p>Libby is powered by the <strong>Statement Engine</strong> · <a href="ledgerpath.html">LedgerPath</a> · Pro subscription</p>
-    <p style="margin-top:6px">API endpoint: <code id="api-endpoint-label" style="background:var(--parchment);padding:2px 8px;border-radius:4px;font-size:11px">http://localhost:5000</code></p>
+    <p style="margin-top:6px">API endpoint: <code id="api-endpoint-label" style="background:var(--parchment);padding:2px 8px;border-radius:4px;font-size:11px">https://web-production-407fa.up.railway.app</code></p>
   </footer>
 </div>
 
@@ -452,7 +452,7 @@ h1,h2,h3{font-family:'Lora',Georgia,serif;font-weight:500;line-height:1.2}
 //  Connects to Flask API wrapper running locally
 // ════════════════════════════════════════════════════════
 
-const API = 'http://localhost:5000';
+const API = 'https://web-production-407fa.up.railway.app';
 let selectedFile = null;
 let processedResults = [];
 
@@ -592,8 +592,8 @@ function showResults(results){
       </div>
       <span class="stmt-conf ${confClass}">${confPct}%</span>
       <div class="stmt-actions">
-        <a class="stmt-dl" href="${API}/download/${encodeURIComponent(r.filename)}" download="${r.filename}" title="Download PDF">PDF ↓</a>
-        ${r.transactions > 0 ? `<a class="stmt-dl-csv" href="${API}/download/${encodeURIComponent(csvFilename)}" download="${csvFilename}" title="Download CSV for QuickBooks">CSV ↓</a>` : ''}
+        <a class="stmt-dl" href="${API}/download/${encodeURIComponent(r.filename)}?api_key=lp_sk_awehq238h23dncdp923nf" download="${r.filename}" title="Download PDF">PDF ↓</a>
+        ${r.transactions > 0 ? `<a class="stmt-dl-csv" href="${API}/download/${encodeURIComponent(csvFilename)}?api_key=lp_sk_awehq238h23dncdp923nf" download="${csvFilename}" title="Download CSV for QuickBooks">CSV ↓</a>` : ''}
       </div>
     </li>`;
   }).join('');
@@ -614,13 +614,13 @@ function showResults(results){
 function downloadAll(){
   processedResults.forEach(r => {
     const a = document.createElement('a');
-    a.href = API+'/download/'+encodeURIComponent(r.filename);
+    a.href = API+'/download/'+encodeURIComponent(r.filename)+'?api_key=lp_sk_awehq238h23dncdp923nf';
     a.download = r.filename;
     a.click();
     if(r.transactions > 0){
       const b = document.createElement('a');
       const csvFilename = r.filename.replace('.pdf', '.csv');
-      b.href = API+'/download/'+encodeURIComponent(csvFilename);
+      b.href = API+'/download/'+encodeURIComponent(csvFilename)+'?api_key=lp_sk_awehq238h23dncdp923nf';
       b.download = csvFilename;
       setTimeout(() => b.click(), 300);
     }
